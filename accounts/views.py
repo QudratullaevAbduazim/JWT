@@ -9,6 +9,9 @@ from django.contrib.auth import authenticate
 from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework.exceptions import ValidationError
 from rest_framework import permissions
+from .utility import check_email
+import random
+from .models import VerifyCode
 # Create your views here.
 
 class SignUpView(APIView):
@@ -128,5 +131,71 @@ class ChangePasswordView(APIView):
             'status': status.HTTP_200_OK,
             'message': 'Parol muvaffaqiyatli yangilandi'
         }
-        return Response(data)   
+        return Response(data)
+
+
+class ForgotPasswordView(APIView):
+    permission_classes = [permissions.AllowAny, ]
+    def post(self, request):
+        email = self.request.data.get('email')
+        email = check_email(email)
+        if email:
+            user = User.objects.filter(email=email).first()
+            if user is None:
+                raise ValidationError('Bu email bizda mavjud emas')
+
+            code = random.randint(1000, 9999)
+
+            VerifyCode.objects.create(
+                user = user,
+                code = code
+            )
+            data = {
+                'status': status.HTTP_200_OK,
+                'message': 'Kodinggiz yuborildi'
+            }
+
+        data = {
+            'status': status.HTTP_400_BAD_REQUEST,
+            'message': 'Xatolik'
+        }
+        return Response(data)
+
+
+class ResetView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request):
+        serializer = ChangePasswordSerializer(data=request.data)
+        if serializer.is_valid():
+            serializer.save()
+        else:
+            raise ValidationError('Xatolik')
+
+        user = request.user
+        old_password = serializer.validated_data.get('old_password')
+        new_password = serializer.validated_data.get('new_password')
+
+
+        if not user.check_password(old_password):
+            raise ValidationError({
+                'success': False,
+                'message': 'Eski parol xato'
+            })
+        user.set_password(new_password)
+        user.save()
+
+        return Response({
+            'success': True,
+            'message': 'Parol muvaffaqiyatli yangilandi',
+        })
+
+
+
+
+
+            
+                
+                
+        
     

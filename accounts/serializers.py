@@ -42,6 +42,9 @@ class ChangePasswordSerializer(serializers.Serializer):
             raise ValidationError({"success": False, 'message': 'Yangi parollar mos emas'})
         return data
     
+    
+
+    
 
     
 
